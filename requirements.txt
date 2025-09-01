@@ -1,0 +1,12 @@
+aiohttp
+async-timeout
+attrs
+certifi
+charset-normalizer
+discord.py
+idna
+multidict
+requests
+urllib3
+yarl
+python-decouple
