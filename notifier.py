@@ -192,8 +192,10 @@ async def on_ready():
 
 @discord_bot.event
 async def on_message(message):
-    if message.author.bot or message.channel.id != CHANNEL_ID:
+    if message.channel.id != CHANNEL_ID:
         return
+
+    print(f"received message from: {message.author.name}, webhook: {message.webhook_id is not None}, content: {message.content}")  # debug log
 
     if "Baru Dibayar" in message.content:
         match = re.search(r"nomor pesanan \*\*(.*?)\*\*", message.content, re.DOTALL)
@@ -234,6 +236,7 @@ async def on_message(message):
 🔗 *Link:* {link}
 ──────────────────
 """
+                print(f"sending telegram for order: {order_id}")  # debug log
                 send_telegram(text, TELEGRAM_CHAT_ID, simulate_typing=False)
             else:
                 print(f"order already exists: {order_id}")
