@@ -1,12 +1,19 @@
-aiohttp>=3.7,<4
-async-timeout>=3.0,<4
-attrs>=19.3,<23
-certifi
-charset-normalizer<3
+# core discord library compatible with Python 3.6
 discord.py==1.7.3
-idna
-multidict>=4.5,<7
+
+# http and async libraries
+aiohttp==3.8.6
+async-timeout==4.0.2
+multidict==6.0.4
+yarl==1.9.2
+
+# requests and dependencies (Python 3.6 safe)
 requests<3
 urllib3<2
-yarl>=1.4,<2
+charset-normalizer<3
+idna<4
+certifi
+
+# other utilities
+attrs>=19.3,<23
 python-decouple
