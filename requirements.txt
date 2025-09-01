@@ -1,4 +1,5 @@
-#i user python3.13.2
+#i use python3.13.2
 discord.py
 requests
 python-decouple
+
