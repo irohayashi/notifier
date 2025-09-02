@@ -9,7 +9,7 @@ import os
 import json
 import sys
 
-# ================= CONFIG ================= #
+# config
 DISCORD_TOKEN = config('DISCORD_TOKEN')
 TELEGRAM_TOKEN = config('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = config('TELEGRAM_CHAT_ID', cast=int)
@@ -20,7 +20,7 @@ ERROR_LOG_FILE = "error.log"
 START_TIME = time.time()
 VPS_START_TIME = datetime(2025, 8, 28, 20, 0).timestamp()
 
-# ================= LOGGING ================= #
+# logging
 def log_error(msg):
     safe_msg = msg
     if TELEGRAM_TOKEN in safe_msg:
@@ -45,7 +45,7 @@ def log_info(msg, auto_clear=False, delay=10):
             sys.stdout.flush()
         threading.Thread(target=clear_line, daemon=True).start()
 
-# ================= UPTIME ================= #
+# uptime
 def get_uptime(start_time):
     seconds = int(time.time() - start_time)
     minutes, seconds = divmod(seconds, 60)
@@ -65,7 +65,7 @@ def get_uptime(start_time):
 def get_vps_uptime():
     return get_uptime(VPS_START_TIME)
 
-# ================= MIGRATION ================= #
+# for migrating old orders(dont mind ths)
 def migrate_orders_if_needed():
     if not os.path.exists(ORDERS_FILE):
         return
@@ -99,7 +99,7 @@ def migrate_orders_if_needed():
             f.write(json.dumps(order, ensure_ascii=False) + "\n")
     print(f"✅ Migrasi selesai! File lama disimpan sebagai {backup_file}")
 
-# ================= ORDER STORAGE ================= #
+# order storage
 def save_order(order_id, details=None):
     try:
         order_data = {
@@ -139,7 +139,7 @@ def get_unique_orders():
             unique.append(o)
     return unique
 
-# ================= PARSER ================= #
+# parser
 def parse_order_details(order_id, text):
     buyer_match = re.search(r"Nama Pembeli: (.*?)(?=\n|$)", text, re.DOTALL)
     game_match = re.search(r"Nama Game: (.*?)(?=\n|$)", text, re.DOTALL)
@@ -153,7 +153,7 @@ def parse_order_details(order_id, text):
         "link": f"https://tokoku.itemku.com/riwayat-pesanan/rincian/{order_id.replace('OD','')}"
     }
 
-# ================= TELEGRAM ================= #
+# telegram
 def send_telegram_message(text):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {"chat_id": TELEGRAM_CHAT_ID, "text": text, "parse_mode": "HTML"}
@@ -236,7 +236,7 @@ def telegram_polling():
             log_error(f"telegram polling failed: {str(e)}")
         time.sleep(2)
 
-# ================= DISCORD BOT ================= #
+# discord bot
 intents = discord.Intents.default()
 intents.messages = True
 intents.guilds = True
@@ -292,9 +292,9 @@ async def on_message(message):
                     f"🔗 <a href='{details['link']}'>Link</a>"
                 )
 
-# ================= MAIN ================= #
 if __name__ == "__main__":
     migrate_orders_if_needed()
     t = threading.Thread(target=telegram_polling, daemon=True)
     t.start()
     discord_bot.run(DISCORD_TOKEN)
+
