@@ -1,4 +1,5 @@
 import discord
+from discord.ext import commands
 import requests
 import re
 import threading
@@ -9,7 +10,7 @@ import os
 import json
 import sys
 
-# config
+# ================= CONFIG ================= #
 DISCORD_TOKEN = config('DISCORD_TOKEN')
 TELEGRAM_TOKEN = config('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = config('TELEGRAM_CHAT_ID', cast=int)
@@ -20,7 +21,7 @@ ERROR_LOG_FILE = "error.log"
 START_TIME = time.time()
 VPS_START_TIME = datetime(2025, 8, 28, 20, 0).timestamp()
 
-# logging
+# ================= LOGGING ================= #
 def log_error(msg):
     safe_msg = msg
     if TELEGRAM_TOKEN in safe_msg:
@@ -45,7 +46,7 @@ def log_info(msg, auto_clear=False, delay=10):
             sys.stdout.flush()
         threading.Thread(target=clear_line, daemon=True).start()
 
-# uptime
+# ================= UPTIME ================= #
 def get_uptime(start_time):
     seconds = int(time.time() - start_time)
     minutes, seconds = divmod(seconds, 60)
@@ -65,7 +66,7 @@ def get_uptime(start_time):
 def get_vps_uptime():
     return get_uptime(VPS_START_TIME)
 
-# for migrating old orders(dont mind ths)
+# ================= MIGRATION ================= #
 def migrate_orders_if_needed():
     if not os.path.exists(ORDERS_FILE):
         return
@@ -99,7 +100,7 @@ def migrate_orders_if_needed():
             f.write(json.dumps(order, ensure_ascii=False) + "\n")
     print(f"✅ Migrasi selesai! File lama disimpan sebagai {backup_file}")
 
-# order storage
+# ================= ORDER STORAGE ================= #
 def save_order(order_id, details=None):
     try:
         order_data = {
@@ -139,7 +140,7 @@ def get_unique_orders():
             unique.append(o)
     return unique
 
-# parser
+# ================= PARSER ================= #
 def parse_order_details(order_id, text):
     buyer_match = re.search(r"Nama Pembeli: (.*?)(?=\n|$)", text, re.DOTALL)
     game_match = re.search(r"Nama Game: (.*?)(?=\n|$)", text, re.DOTALL)
@@ -153,7 +154,7 @@ def parse_order_details(order_id, text):
         "link": f"https://tokoku.itemku.com/riwayat-pesanan/rincian/{order_id.replace('OD','')}"
     }
 
-# telegram
+# ================= TELEGRAM ================= #
 def send_telegram_message(text):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {"chat_id": TELEGRAM_CHAT_ID, "text": text, "parse_mode": "HTML"}
@@ -236,21 +237,29 @@ def telegram_polling():
             log_error(f"telegram polling failed: {str(e)}")
         time.sleep(2)
 
-# discord bot
+# ================= DISCORD BOT ================= #
 intents = discord.Intents.default()
 intents.messages = True
 intents.guilds = True
 intents.message_content = True
 
-discord_bot = discord.Client(intents=intents)
+# Use commands.Bot instead of Client for slash commands support
+bot = commands.Bot(command_prefix='!', intents=intents)
 
-@discord_bot.event
+@bot.event
 async def on_ready():
-    print(f"✅ Bot connected as {discord_bot.user}")
+    print(f"✅ Bot connected as {bot.user}")
+    try:
+        # Sync slash commands
+        synced = await bot.tree.sync()
+        print(f"✅ Synced {len(synced)} command(s)")
+    except Exception as e:
+        print(f"❌ Failed to sync commands: {e}")
+    
     await fetch_all_orders_from_history()
 
 async def fetch_all_orders_from_history():
-    channel = discord_bot.get_channel(CHANNEL_ID)
+    channel = bot.get_channel(CHANNEL_ID)
     if not channel:
         print("❌ Channel not found, cek DISCORD_CHANNEL_ID")
         return
@@ -270,8 +279,11 @@ async def fetch_all_orders_from_history():
     except Exception as e:
         log_error(f"history fetch failed: {str(e)}")
 
-@discord_bot.event
+@bot.event
 async def on_message(message):
+    # Process commands
+    await bot.process_commands(message)
+    
     if message.channel.id != CHANNEL_ID:
         return
     if "Baru Dibayar" in message.content:
@@ -292,9 +304,44 @@ async def on_message(message):
                     f"🔗 <a href='{details['link']}'>Link</a>"
                 )
 
+# ================= SLASH COMMANDS ================= #
+@bot.tree.command(name="developer", description="Developer menu command for active developer badge")
+async def developer(interaction: discord.Interaction):
+    """Developer command for active developer badge"""
+    embed = discord.Embed(
+        title="🤖 Developer Menu",
+        description="Active Developer Badge Bot",
+        color=0x00ff00
+    )
+    embed.add_field(name="Status", value="Active", inline=False)
+    embed.add_field(name="Version", value="1.0.0", inline=True)
+    embed.add_field(name="Uptime", value=get_uptime(START_TIME), inline=True)
+    embed.set_footer(text=f"Requested by {interaction.user.name}", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="stats", description="Show bot statistics")
+async def stats(interaction: discord.Interaction):
+    """Show bot statistics"""
+    orders = get_unique_orders()
+    embed = discord.Embed(
+        title="📊 Bot Statistics",
+        color=0x5865F2
+    )
+    embed.add_field(name="Total Orders", value=len(orders), inline=True)
+    embed.add_field(name="Uptime", value=get_uptime(START_TIME), inline=True)
+    embed.add_field(name="Server Count", value=len(bot.guilds), inline=True)
+    embed.set_footer(text=f"Requested by {interaction.user.name}")
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="ping", description="Check bot latency")
+async def ping(interaction: discord.Interaction):
+    """Check bot latency"""
+    latency = round(bot.latency * 1000)
+    await interaction.response.send_message(f"Pong! 🏓 Latency: {latency}ms")
+
+# ================= MAIN ================= #
 if __name__ == "__main__":
     migrate_orders_if_needed()
     t = threading.Thread(target=telegram_polling, daemon=True)
     t.start()
-    discord_bot.run(DISCORD_TOKEN)
-
+    bot.run(DISCORD_TOKEN)
