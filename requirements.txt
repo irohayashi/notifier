@@ -1,5 +1,19 @@
-#i use python3.13.2
-discord.py
-requests
-python-decouple
+# Core Discord library compatible with Python 3.13
+discord.py>=2.0
 
+# HTTP and async libraries - compatible versions
+aiohttp>=3.8.0
+async-timeout>=4.0
+multidict>=6.0
+yarl>=1.9.0
+
+# Requests and dependencies
+requests>=2.30
+urllib3>=2.0
+charset-normalizer>=3.0
+idna>=3.3
+certifi>=2023.0
+
+# Other utilities
+attrs>=23.0
+python-decouple>=3.8
